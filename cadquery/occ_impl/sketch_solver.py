@@ -30,6 +30,7 @@ ConstraintKind = Literal[
     "Radius",
     "Orientation",
     "ArcAngle",
+    "Symmetric",
 ]
 
 ConstraintInvariants = {  # (arity, geometry types, param type, conversion func)
@@ -47,6 +48,12 @@ ConstraintInvariants = {  # (arity, geometry types, param type, conversion func)
     "Radius": (1, ("CIRCLE",), Real, None),
     "Orientation": (1, ("LINE",), Tuple[Real, Real], None),
     "ArcAngle": (1, ("CIRCLE",), Real, radians),
+    "Symmetric": (
+        3,
+        ("CIRCLE", "LINE"),
+        Tuple[Optional[Real], Optional[Real], Optional[Real]],
+        None,
+    ),
 }
 
 Constraint = Tuple[Tuple[int, ...], ConstraintKind, Optional[Any]]
@@ -220,6 +227,55 @@ def arc_angle_cost(x, t, x0, val):
     return rv
 
 
+def distance(p, start, end):
+    axis = end - start
+    return abs(
+        (end.y - start.y) * p.x
+        - (end.x - start.x) * p.y
+        + end.x * start.y
+        - start.y * end.x
+    ) / norm(axis)
+
+
+def symmetric_cost(x1, t1, x10, x2, t2, x20, x3, t3, x30, val):
+    p1 = None
+    p2 = None
+    p3 = None
+
+    if t1 == "LINE" and val[0] == None:
+        raise invalid_args(t1)
+
+    elif t1 == "LINE":
+        p1 = line_point(x1, val[0])
+    elif t1 == "CIRCLE":
+        p1 = arc_point(x1, val[0])
+
+    if t2 == "LINE" and val[1] == None:
+        raise invalid_args(t1)
+
+    elif t2 == "LINE":
+        p2 = line_point(x2, val[1])
+    elif t2 == "CIRCLE":
+        p2 = arc_point(x2, val[1])
+
+    if t3 == "LINE" and val[2] == None:
+
+        start = line_point(x3, 0)
+        end = line_point(x3, 1)
+        axis = end - start
+
+        d = p1 - p2
+        return abs(d.dot(axis)) + abs(distance(p1, start, end) - distance(p2, start, end))
+
+    elif t3 == "LINE":
+        p3 = line_point(x3, val[2])
+        return norm(p3 - p1) - norm(p3 - p2)
+
+    elif t3 == "CIRCLE":
+        p3 = arc_point(x3, val[2])
+        return norm(p3 - p1) - norm(p3 - p2)
+
+
 # dictionary of individual constraint cost functions
 costs: Dict[str, Callable[..., float]] = dict(
     Fixed=fixed_cost,
@@ -231,6 +287,7 @@ costs: Dict[str, Callable[..., float]] = dict(
     Radius=radius_cost,
     Orientation=orientation_cost,
     ArcAngle=arc_angle_cost,
+    Symmetric=symmetric_cost,
 )
 
 
