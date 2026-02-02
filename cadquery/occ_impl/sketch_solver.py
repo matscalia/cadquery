@@ -265,7 +265,9 @@ def symmetric_cost(x1, t1, x10, x2, t2, x20, x3, t3, x30, val):
         axis = end - start
 
         d = p1 - p2
-        return abs(d.dot(axis)) + abs(distance(p1, start, end) - distance(p2, start, end))
+        return abs(d.dot(axis)) + abs(
+            distance(p1, start, end) - distance(p2, start, end)
+        )
 
     elif t3 == "LINE":
         p3 = line_point(x3, val[2])
