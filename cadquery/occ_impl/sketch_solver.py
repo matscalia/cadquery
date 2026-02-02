@@ -49,7 +49,7 @@ ConstraintInvariants = {  # (arity, geometry types, param type, conversion func)
     "ArcAngle": (1, ("CIRCLE",), Real, radians),
 }
 
-Constraint = Tuple[Tuple[int, Optional[int]], ConstraintKind, Optional[Any]]
+Constraint = Tuple[Tuple[int, ...], ConstraintKind, Optional[Any]]
 
 DIFF_EPS = 1e-10
 TOL = 1e-9
@@ -285,14 +285,14 @@ class SketchConstraintSolver(object):
 
             rv = 0.0
 
-            for i, ((e1, e2), kind, val) in enumerate(constraints):
+            for i, (entity_indices, kind, val) in enumerate(constraints):
 
                 cost = costs[kind]
 
                 # build arguments for the specific constraint
-                args = [x[ixs[e1] : ixs[e1 + 1]], geoms[e1], x0s[e1]]
-                if e2 is not None:
-                    args += [x[ixs[e2] : ixs[e2 + 1]], geoms[e2], x0s[e2]]
+                args = []
+                for e in entity_indices:
+                    args += [x[ixs[e] : ixs[e + 1]], geoms[e], x0s[e]]
 
                 # evaluate
                 rv += cost(*args, val) ** 2
@@ -306,32 +306,26 @@ class SketchConstraintSolver(object):
 
             rv[:] = 0
 
-            for i, ((e1, e2), kind, val) in enumerate(constraints):
+            for i, (entity_indices, kind, val) in enumerate(constraints):
 
                 cost = costs[kind]
 
                 # build arguments for the specific constraint
-                x1 = x[ixs[e1] : ixs[e1 + 1]]
-                args = [x1.copy(), geoms[e1], x0s[e1]]
-                if e2 is not None:
-                    x2 = x[ixs[e2] : ixs[e2 + 1]]
-                    args += [x2.copy(), geoms[e2], x0s[e2]]
+                x_views = [x[ixs[e] : ixs[e + 1]] for e in entity_indices]
+
+                args = []
+                for e_idx, e in enumerate(entity_indices):
+                    args += [x_views[e_idx].copy(), geoms[e], x0s[e]]
 
                 # evaluate
                 tmp = cost(*args, val)
 
-                for j, k in enumerate(range(ixs[e1], ixs[e1 + 1])):
-                    args[0][j] += DIFF_EPS
-                    tmp1 = cost(*args, val)
-                    rv[k] += 2 * tmp * (tmp1 - tmp) / DIFF_EPS
-                    args[0][j] = x1[j]
-
-                if e2 is not None:
-                    for j, k in enumerate(range(ixs[e2], ixs[e2 + 1])):
-                        args[3][j] += DIFF_EPS
-                        tmp2 = cost(*args, val)
-                        rv[k] += 2 * tmp * (tmp2 - tmp) / DIFF_EPS
-                        args[3][j] = x2[j]
+                for entity_idx, e in enumerate(entity_indices):
+                    for j, k in enumerate(range(ixs[e], ixs[e + 1])):
+                        args[entity_idx * 3][j] += DIFF_EPS
+                        tmp1 = cost(*args, val)
+                        rv[k] += 2 * tmp * (tmp1 - tmp) / DIFF_EPS
+                        args[entity_idx * 3][j] = x_views[entity_idx][j]
 
         # generate lower and upper bounds for optimization
         lb = full(ixs[-1], -inf)

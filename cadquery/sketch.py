@@ -992,6 +992,19 @@ class Sketch(object):
 
         return self
 
+    @constrain.register
+    def constrain(
+        self: T, tag1: str, tag2: str, tag3: str, constraint: ConstraintKind, arg: Any
+    ):
+        self._constraints.append(
+            Constraint(
+                (tag1, tag2, tag3,),
+                (self._tags[tag1][0], self._tags[tag2][0], self._tags[tag3][0]),
+                constraint,
+                arg,
+            )
+        )
+
     def solve(self: T) -> T:
         """
         Solve current constraints and update edge positions.
@@ -1040,7 +1053,7 @@ class Sketch(object):
         # build the POD constraint list
         constraints = []
         for c in self._constraints:
-            ix = (e2i[c.tags[0]], e2i[c.tags[1]] if len(c.tags) == 2 else None)
+            ix = tuple(e2i[tag] for tag in c.tags)
             constraints.append((ix, c.kind, c.param))
 
         # optimize
