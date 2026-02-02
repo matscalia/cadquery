@@ -230,10 +230,10 @@ def arc_angle_cost(x, t, x0, val):
 def distance(p, start, end):
     axis = end - start
     return abs(
-        (end.y - start.y) * p.x
-        - (end.x - start.x) * p.y
-        + end.x * start.y
-        - start.y * end.x
+        (end[1] - start[1]) * p[0]
+        - (end[0] - start[0]) * p[1]
+        + end[0] * start[1]
+        - start[1] * end[0]
     ) / norm(axis)
 
 
