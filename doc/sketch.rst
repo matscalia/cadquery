@@ -174,32 +174,32 @@ Following constraints are implemented. Arguments are passed in as one tuple in :
       - Distance between two points is fixed
     * - Radius
       - 1
-      - Arc
-      - `radius`
+      - Arc, Ellipse
+      - `radius | (ellipse_radius_index, radius)`
       - Specified entity has a fixed radius
     * - Orientation
       - 1
-      - Segment
+      - Segment, Ellipse
       - `x,y`
-      - Specified entity is parallel to `(x,y)`
+      - Specified segment or ellipse x axis is parallel to `(x,y)`
     * - ArcAngle
       - 1
-      - Arc
+      - Arc, Ellipse
       - `angle`
       - Specified entity is fixed angular span
     * - PointOnObject
       - 2
       - All
-      - `None` for arc center or `0..1` for point on segment/arc
+      - `None` for arc/ellipse center or `0..1` for point on segment/arc
     * - Equal
       - 2
       - All
       - None
-      - Specified lines have equal length
+      - Specified entities have equal length
     * - EqualRadius
       - 2
-      - Arc
-      - None
+      - Arc, Ellipse
+      - `None` if both arcs are circular arcs, `(None | ellipse_radius_index, None | ellipse_radius_index)` for any combination of ellipse and circle radius where 0 or 1 specify respectively the major and the minor radius of an ellipse
       - Specified arcs have equal radius
 
 
