@@ -191,6 +191,16 @@ Following constraints are implemented. Arguments are passed in as one tuple in :
       - 2
       - All
       - `None` for arc center or `0..1` for point on segment/arc
+    * - Equal
+      - 2
+      - All
+      - None
+      - Specified lines have equal length
+    * - EqualRadius
+      - 2
+      - Arc
+      - None
+      - Specified arcs have equal radius
 
 
 Workplane integration
