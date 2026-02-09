@@ -16,8 +16,11 @@ from typing import (
     get_origin,
 )
 
-from math import tan, sin, cos, pi, radians, remainder
+from math import atan2, degrees, sqrt, tan, sin, cos, pi, radians, remainder
 from itertools import product, chain
+from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeEdge
+from OCP.GC import GC_MakeArcOfEllipse
+from OCP.gp import gp_Ax2, gp_Elips
 from multimethod import multimethod
 
 from .hull import find_hull
@@ -47,6 +50,7 @@ from .occ_impl.sketch_solver import (
     arc_first,
     arc_last,
     arc_point,
+    ellipse_angle,
 )
 
 #%% types
@@ -945,6 +949,59 @@ class Sketch(object):
 
         return self.edge(val, tag, forConstruction)
 
+    @staticmethod
+    def __makeEllipse(
+        c: Point, r: tuple[Real, Real], a: Real, da: Real, xdir: tuple[Real, Real],
+    ):
+        """
+        Construct an ellipse arc.
+        """
+        pnt_p = Vector(c).toPnt()
+        dir_d = Vector(0, 0, 1).toDir()
+        xdir_d = Vector(xdir).toDir()
+
+        ax2 = gp_Ax2(pnt_p, dir_d, xdir_d)
+        if r[1] > r[0]:
+            r = (r[1], r[0])
+        a0 = radians(a)
+        a1 = radians(a + da)
+        radius = (
+            lambda theta: r[0]
+            * r[1]
+            / sqrt((r[1] * cos(theta)) ** 2 + (r[0] * sin(theta)) ** 2)
+        )
+        x = radius(a0) * cos(a0)
+        y = radius(a0) * sin(a0)
+        x1 = radius(a1) * cos(a1)
+        y1 = radius(a1) * sin(a1)
+
+        t = atan2(y / r[1], x / r[0])
+        t1 = atan2(y1 / r[1], x1 / r[0])
+        ellipse_gp = gp_Elips(ax2, r[0], r[1])
+        if a == (a + da) % 360:
+            ellipse = Edge(BRepBuilderAPI_MakeEdge(ellipse_gp).Edge())
+        else:
+            ellipse_geom = GC_MakeArcOfEllipse(ellipse_gp, t, t1, (t1 - t) > 0,).Value()
+            ellipse = Edge(BRepBuilderAPI_MakeEdge(ellipse_geom).Edge())
+        return ellipse
+
+    def ellipseArc(
+        self: T,
+        center: Point,
+        r: tuple[Real, Real],
+        a: Real,
+        da: Real,
+        xdir: tuple[Real, Real],
+        tag: str | None = None,
+        forConstruction: bool = False,
+    ):
+        """
+        Construct an ellipse arc.
+        """
+        rot = atan2(xdir[1], xdir[0])
+        ellipse = self.__makeEllipse(center, r, a - degrees(rot), da, xdir)
+        return self.edge(ellipse, tag, forConstruction)
+
     def close(self: T, tag: Optional[str] = None) -> T:
         """
         Connect last edge to the first one.
@@ -1029,6 +1086,22 @@ class Sketch(object):
                     a2 -= 2 * pi
                 radius = v0.radius()
                 ent = (p.x, p.y, radius, a1, a2)
+            elif v0.geomType() == "ELLIPSE":
+                adaptor = v0._geomAdaptor()
+                ellipse = adaptor.Ellipse()
+                center = ellipse.Location()
+                cx = center.X()
+                cy = center.Y()
+
+                xdir = ellipse.Position().XDirection()
+
+                xr = ellipse.MajorRadius()
+                yr = ellipse.MinorRadius()
+                rot = atan2(xdir.Y(), xdir.X())
+                t = adaptor.FirstParameter()
+                t1 = adaptor.LastParameter()
+                dt = t1 - t
+                ent: DOF = (cx, cy, xr, yr, rot, t, dt)
 
             else:
                 continue
@@ -1062,6 +1135,13 @@ class Sketch(object):
                 p2 = Vector(*arc_point(el, 0.5))
                 p3 = Vector(*arc_last(el))
                 e = Edge.makeThreePointArc(p1, p2, p3)
+            elif g == "ELLIPSE":
+                cx, cy, xr, yr, rot, t, dt = el
+                a = degrees(ellipse_angle(el, 0) - rot)
+                a1 = degrees(ellipse_angle(el, 1) - rot)
+                e = self.__makeEllipse(
+                    (cx, cy), (xr, yr), a, a1 - a, (cos(rot), sin(rot))
+                )
 
             # overwrite the low level object
             self._tags[k][0].wrapped = e.wrapped

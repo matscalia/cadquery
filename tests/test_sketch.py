@@ -1023,6 +1023,26 @@ def test_equal_constraints():
     assert s3._tags["arc"][0].Length() == approx(2)
 
 
+def test_ellipse_constraints():
+    s = (
+        Sketch()
+        .ellipseArc((0, 0), (3, 0.8), -90, 180, (1, 0.1), "earc")
+        .arc((0, 0), 1, 90, 180, "arc")
+    )
+
+    s.constrain("arc", "Fixed", None)
+    s.constrain("earc", "arc", "Coincident", None)
+    s.constrain("arc", "earc", "Coincident", None)
+    s.constrain("earc", "Orientation", (1, 0))
+    s.constrain("earc", "Radius", (0, 3.0))
+    s.constrain("earc", "arc", "EqualRadius", (1, None))
+    s.constrain("earc", "FixedPoint", None)
+    s.constrain("earc", "arc", "Angle", 0)
+    s.solve()
+    assert s._solve_status["status"] == 4
+    s.assemble()
+
+
 def test_dxf_import():
 
     filename = os.path.join(testdataDir, "gear.dxf")
