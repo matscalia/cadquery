@@ -195,7 +195,7 @@ def ellipse_length(x):
 
 def ellipse_angle(x, val):
     p = ellipse_point(x, val)
-    return atan2(p[1], p[0])
+    return atan2(p[1] - x[1], p[0] - x[0])
 
 
 def fixed_cost(x, t, x0, val):
@@ -218,8 +218,6 @@ def fixed_point_cost(x, t, x0, val):
 
 
 def coincident_cost(x1, t1, x10, x2, t2, x20, val):
-    v1 = (0, 0)
-    v2 = (0, 0)
     if t1 == "LINE":
         v1 = x1[2:]
     elif t1 == "CIRCLE":
